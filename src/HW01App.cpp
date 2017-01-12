@@ -18,37 +18,67 @@ using namespace ci;
 using namespace ci::app;
 using namespace std;
 
-const int TEXTURE_WIDTH=1024;
-const int TEXTURE_HEIGHT=1024;
-
 class HW01App : public AppBasic {
   public:
 	void setup();
 	void mouseDown( MouseEvent event );	
+	void prepareSettings(Settings* settings);
 	void update();
 	void draw();
 
   private:	
 	Surface* mySurface_;
-		
-	RECT rectSource1;
-	RECT rectSource2;
 
-	static const int kAppWidth = 800;	
-	static const int kAppHeight = 600;
+	//Just for readability use one standard for constants and put them all in the same place
+	static const int APP_WIDTH = 800;	
+	static const int APP_HEIGHT = 600;
+	//Having both width and height is unnessay because surface must be square
+	static const int TEXTURE_SIZE=1024;
 
+	/** 
+	*  Draws a rectangle and fills it with color 
+	**/
 	void drawRectangle(uint8_t* pixel, int x, int y, int width, int height, Color8u shapeColor);
+
+	/** 
+	*  Draws a circle and fills it with color 
+	**/
 	void drawCircle(uint8_t* pixel, int centerX, int centerY, int radius, Color8u shapeColor);
+
+	/** 
+	*  Copies a rectangular section of the image to another section
+	**/
 	void copyRectangle(uint8_t* pixels, int xSrc, int ySrc, int widthSrc, int heightSrc, int xDest, int yDest);
+
+	/** 
+	*  Gradually changes the background color from one color to another
+	*  
+	*  https://github.com/kosciaaj/HW01Part2/blob/master/src/HW01Part2App.cpp 
+	**/
 	void gradient(uint8_t* pixels, Color8u color1, Color8u color2);
+
+	/** 
+	*  Distorts the background, possibly undoing gradient, and makes it look like
+	*  technicolor television snow
+	**/
 	void HW01App::televisionSnow(uint8_t* pixels);
 
-		
 };
 
-/** 
-*  Draws a rectangle and fills it with color 
-**/
+//Keeps the user from changing window size to a size greater than the surface.
+void HW01App::prepareSettings(Settings* settings){
+	(*settings).setWindowSize(APP_WIDTH,APP_HEIGHT);
+	(*settings).setResizable(false);
+}
+
+//I prefer the setup function to be at the top so the methods go in the general order of exicution.
+//However thats just a personal openion.
+void HW01App::setup()
+{
+	mySurface_ = new Surface(TEXTURE_SIZE,TEXTURE_SIZE,false);
+}
+
+
 void HW01App::drawRectangle(uint8_t* pixel, int x, int y, int width, int height, Color8u shapeColor){	
 	int startx = x;	
 	int endx = x + width;	
@@ -56,58 +86,54 @@ void HW01App::drawRectangle(uint8_t* pixel, int x, int y, int width, int height,
 	int endy = y + height;	
 	for(int y = starty; y < endy; y++){		
 		for(int x = startx; x < endx; x++){			
-			pixel[3*(x + y*TEXTURE_WIDTH)] = shapeColor.r;			
-			pixel[3*(x + y*TEXTURE_WIDTH)+1] = shapeColor.g;			
-			pixel[3*(x + y*TEXTURE_WIDTH)+2] = shapeColor.b;		
+			pixel[3*(x + y*TEXTURE_SIZE)] = shapeColor.r;			
+			pixel[3*(x + y*TEXTURE_SIZE)+1] = shapeColor.g;			
+			pixel[3*(x + y*TEXTURE_SIZE)+2] = shapeColor.b;		
 		}	
 	}
 }
 
-/** 
-*  Draws a circle and fills it with color 
-**/
+
 void HW01App::drawCircle(uint8_t* pixels, int centerX, int centerY , int radius, Color8u shapeColor){	
-	for(int y=0; y<kAppHeight; y++){		
-		for(int x=0; x<kAppWidth; x++){			
+	for(int y=0; y<APP_HEIGHT; y++){		
+		for(int x=0; x<APP_WIDTH; x++){			
 			double doubleY = y+0.0;			
 			double doubleX = x+0.0;			
+			//I like how you got around doing the square root function call 
 			if(((doubleX-centerX)*(doubleX-centerX) + (doubleY-centerY)*(doubleY-centerY) <= radius*radius)){				
-				pixels[3*(x + y*TEXTURE_WIDTH)] = shapeColor.r;				
-				pixels[3*(x + y*TEXTURE_WIDTH)+1] = shapeColor.g;				
-				pixels[3*(x + y*TEXTURE_WIDTH)+2] = shapeColor.b;			
+				pixels[3*(x + y*TEXTURE_SIZE)] = shapeColor.r;				
+				pixels[3*(x + y*TEXTURE_SIZE)+1] = shapeColor.g;				
+				pixels[3*(x + y*TEXTURE_SIZE)+2] = shapeColor.b;			
 			}
 		}
 	}
 }
 
-/** 
-*  Copies a rectangular section of the image to another section
-*
-*  INCOMPLETE
-**/
+
 void HW01App::copyRectangle(uint8_t* pixel, int xSrc, int ySrc, int widthSrc, int heightSrc, int xDest, int yDest){	
 	int startx = xSrc;	
 	int endx = xSrc + widthSrc;	
 	int starty = ySrc;	
-	int endy = ySrc + heightSrc;	
-	for(int y = starty; y < endy; y++){		
-		for(int x = startx; x < endx; x++){			
-			//Do something	
+	int endy = ySrc + heightSrc;
+	int srcOffset, destOffset;
+	for(int y = 0; y < heightSrc; y++){		
+		for(int x = 0; x < widthSrc; x++){	
+			srcOffset = 3*((xSrc+x) + (ySrc+y)*TEXTURE_SIZE);
+			destOffset = 3*((xDest+x) + (yDest+y)*TEXTURE_SIZE);
+			pixel[destOffset] = pixel[srcOffset];
+			pixel[destOffset+1] = pixel[srcOffset+1];
+			pixel[destOffset+2] = pixel[srcOffset+2];
 		}	
 	}
 
 }
 
-/** 
-*  Gradually changes the background color from one color to another
-*  
-*  https://github.com/kosciaaj/HW01Part2/blob/master/src/HW01Part2App.cpp 
-**/
+
 void HW01App::gradient(uint8_t* pixels, Color8u color1, Color8u color2){	
-	for(int i = 0; i <= kAppHeight; i++)	{		
-		int ratio = i/kAppHeight;		
-		for(int j = 0; j <= kAppWidth; j++)		{			
-			int offset = 3*(i + j*kAppWidth);						
+	for(int i = 0; i <= APP_HEIGHT; i++)	{		
+		int ratio = i/APP_HEIGHT;		
+		for(int j = 0; j <= APP_WIDTH; j++)		{			
+			int offset = 3*(i + j*APP_WIDTH);						
 			pixels[offset] = (int) (color1.r * (1 + ratio) + color2.r * ratio);			
 			pixels[offset+100] = (int) (color1.g * (1 + ratio) + color2.g * ratio);			
 			pixels[offset+200] = (int) (color1.b * (1 + ratio) + color2.b * ratio);		
@@ -115,20 +141,17 @@ void HW01App::gradient(uint8_t* pixels, Color8u color1, Color8u color2){
 	}
 }
 
-/** 
-*  Distorts the background, possibly undoing gradient, and makes it look like
-*  technicolor television snow
-**/
+
 void HW01App::televisionSnow(uint8_t* pixels){	
-	for(int y = 1; y <= TEXTURE_HEIGHT-1; y++)	{		
-		for(int x = 1; x <= TEXTURE_HEIGHT-1; x++)		{			
-			int offset = 3*(x + y*TEXTURE_HEIGHT);			
+	for(int y = 1; y <= TEXTURE_SIZE-1; y++)	{		
+		for(int x = 1; x <= TEXTURE_SIZE-1; x++)		{			
+			int offset = 3*(x + y*TEXTURE_SIZE);			
 			uint8_t r_total = 0;			
 			uint8_t g_total = 0;			
 			uint8_t b_total = 0;			
 			for(int y2 = -1; y2 <= 1; y2++)			{				
 				for(int x2 = -1; x2 <= 1; x2++)				{					
-					int offset2 = 3*(x + x2 + (y + y2)*TEXTURE_HEIGHT);					
+					int offset2 = 3*(x + x2 + (y + y2)*TEXTURE_SIZE);					
 					r_total += pixels[offset2];					
 					g_total += pixels[offset2 + 1];					
 					b_total += pixels[offset2 + 2];				
@@ -139,25 +162,6 @@ void HW01App::televisionSnow(uint8_t* pixels){
 			pixels[offset + 2] = b_total/2;	
 		}	
 	}
-}
-void HW01App::setup()
-{
-	mySurface_ = new Surface(TEXTURE_WIDTH,TEXTURE_HEIGHT,false);
-	
-	rectSource1.left = 10;
-	rectSource1.top = 10;
-	rectSource1.bottom = 100;
-	rectSource1.right = 100;
-
-	rectSource2.left = 100;
-	rectSource2.top = 100;
-	rectSource2.bottom = 200;
-	rectSource2.right = 200;
-
-}
-
-void HW01App::mouseDown( MouseEvent event )
-{
 }
 
 void HW01App::update()
@@ -170,13 +174,13 @@ void HW01App::update()
 	Color8u circleColor = Color8u(50, 100, 80);
 	Color8u gradientColorStart = Color8u(20, 20, 20);
 	Color8u gradientColorEnd = Color8u(40, 0, 0);
-	gradient(dataArray, gradientColorStart, gradientColorEnd);
 	televisionSnow(dataArray);
+	//Gradient doesn't add anything when used in combination with the televisionSnow method.
+	//The order of the two functions does not change this. 
+	gradient(dataArray, gradientColorStart, gradientColorEnd);
 	drawCircle(dataArray, 50, 50, 25, circleColor);	
 	drawRectangle(dataArray, 200, 300, 200, 100, rectColor);
-	copyRectangle(dataArray, 10, 10, 50, 50, 10, 200);
-	
-	
+	copyRectangle(dataArray, 10, 10, 50, 200, 500, 100);
 }
 
 void HW01App::draw()
